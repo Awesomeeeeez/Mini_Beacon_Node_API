@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Block {
     pub slot: u64,
+    pub root: String,
     pub parent_root: String,   // hex-строка "0x..."
     pub proposer_index: u64,
     pub body: String,          // любая полезная нагрузка
@@ -14,11 +15,20 @@ impl Block {
     pub fn new() -> Self {
         Self {
             slot: 0,
+            root: format!("0x{}", "0".repeat(64)),
             parent_root: format!("0x{}", "0".repeat(64)),
             proposer_index: 0,
             body: "hello".to_string(),
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct NewBlock {
+    pub slot: u64,
+    pub parent_root: String,   // hex-строка "0x..."
+    pub proposer_index: u64,
+    pub body: String,          // любая полезная нагрузка
 }
 
 #[derive(Serialize)]

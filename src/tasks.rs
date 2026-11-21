@@ -2,7 +2,7 @@ use std::{format};
 use axum::{Json, extract::{Path, Query, State}, http::StatusCode};
 use sha2::{Sha256, Digest};
 
-use crate::state::AppState;
+use crate::{models::NewBlock, state::AppState};
 use crate::models::{Block, Health, RootResponse, ApiError, Pagination};
 
 pub async fn health(
@@ -25,7 +25,7 @@ pub async fn get_one(
 
     list
         .iter()
-        .find(|block| block.parent_root == root)
+        .find(|block| block.root == root)
         .map(|x| Json(x.clone()))
         .ok_or(ApiError::NotFound)
 }
@@ -39,7 +39,7 @@ pub async fn head(
 
 pub async fn new_block(
     State(state): State<AppState>,
-    Json(payload): Json<Block>,
+    Json(payload): Json<NewBlock>,
 ) -> Result<(StatusCode, Json<RootResponse>), ApiError>
 {
     let last_block = state.last_block.read().await;
@@ -47,7 +47,7 @@ pub async fn new_block(
     if payload.parent_root.len() != 66 {
         return Err(ApiError::InvalidFormat);
     }
-    if payload.parent_root != last_block.parent_root {
+    if payload.parent_root != last_block.root {
         return Err(ApiError::ParentUnknown);
     }
     if payload.slot != last_block.slot + 1 {
@@ -60,6 +60,7 @@ pub async fn new_block(
     let mut hash = Sha256::new();
 
     hash.update(last_block.slot.to_le_bytes());
+    hash.update(last_block.root.as_bytes());
     hash.update(last_block.parent_root.as_bytes());
     hash.update(last_block.proposer_index.to_le_bytes());
     hash.update(last_block.body.as_bytes());
@@ -69,7 +70,8 @@ pub async fn new_block(
     let new_block = 
         Block {
             slot: last_block.slot + 1,
-            parent_root: new_root.clone(),
+            root: new_root.clone(),
+            parent_root: last_block.root.clone(),
             proposer_index: last_block.proposer_index + payload.proposer_index,
             body: format!("{}{}", last_block.body, payload.body), 
         }
