@@ -58,36 +58,54 @@ pub enum ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        match self {
+        let (status, error, message) = match self {
             ApiError::InvalidFormat => (
                 StatusCode::NOT_ACCEPTABLE,
-                "Ошибка формата",
-            )
-                .into_response(),
+                "invalid_format",
+                "Некорректный формат parent_root",
+            ),
 
             ApiError::ParentUnknown => (
                 StatusCode::NOT_ACCEPTABLE,
-                "Хэш последнего блока не верный",
-            )
-                .into_response(),
+                "parent_unknown",
+                "Родительский блок не найден",
+            ),
 
             ApiError::OrderDisrupted => (
                 StatusCode::NOT_ACCEPTABLE,
-                "нарушен порядок",
-            )
-                .into_response(),
+                "order_disrupted",
+                "Нарушен порядок блоков",
+            ),
 
             ApiError::BadData => (
                 StatusCode::NOT_ACCEPTABLE,
-                "Плохие данные",
-            )
-                .into_response(),
-            
+                "bad_data",
+                "Некорректные данные блока",
+            ),
+
             ApiError::NotFound => (
                 StatusCode::NOT_FOUND,
+                "not_found",
                 "Запрашиваемый блок не найден",
-            )
-                .into_response(),
-        }
+            ),
+        };
+
+        (
+            status,
+            axum::Json(
+                ErrorResponse{
+                    error,
+                    message,
+                }
+            ),
+        )
+            .into_response()
+
     }
+}
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: &'static str,
+    message: &'static str,
 }

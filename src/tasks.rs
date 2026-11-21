@@ -1,8 +1,7 @@
 use std::{format};
 use axum::{Json, extract::{Path, Query, State}, http::StatusCode};
-use sha2::{Sha256, Digest};
 
-use crate::{models::NewBlock, state::AppState};
+use crate::{tools::hash_generate::hash_generate, models::NewBlock, state::AppState, tools::validate_new_block::validate_new_block};
 use crate::models::{Block, Health, RootResponse, ApiError, Pagination};
 
 pub async fn health(
@@ -44,28 +43,9 @@ pub async fn new_block(
 {
     let last_block = state.last_block.read().await;
 
-    if payload.parent_root.len() != 66 {
-        return Err(ApiError::InvalidFormat);
-    }
-    if payload.parent_root != last_block.root {
-        return Err(ApiError::ParentUnknown);
-    }
-    if payload.slot != last_block.slot + 1 {
-        return Err(ApiError::OrderDisrupted);
-    }
-    if payload.body.len() > 1024 {
-        return Err(ApiError::BadData);
-    }
+    validate_new_block(&last_block, &payload)?;
 
-    let mut hash = Sha256::new();
-
-    hash.update(last_block.slot.to_le_bytes());
-    hash.update(last_block.root.as_bytes());
-    hash.update(last_block.parent_root.as_bytes());
-    hash.update(last_block.proposer_index.to_le_bytes());
-    hash.update(last_block.body.as_bytes());
-
-    let new_root = format!("0x{}", hex::encode(hash.finalize()));
+    let new_root = hash_generate(&last_block);
 
     let new_block = 
         Block {

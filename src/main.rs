@@ -2,6 +2,7 @@ mod tasks;
 mod state;
 mod models;
 mod routes;
+mod tools;
 
 use std::println;
 use state::AppState;
